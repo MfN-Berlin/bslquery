@@ -16,10 +16,3 @@ def db_query(func):
         except DatabaseError as e:
             self._log(f"Query failed: {e}")
     return wrapper
-
-def rows_as_dicts(cursor):
-    rows = cursor.fetchall()
-    if not rows:
-        return None                      # tests assert empty result -> None
-    columns = [d[0] for d in cursor.description]
-    return [dict(zip(columns, row)) for row in rows]
