@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/MfN-Berlin/bslquery/actions/workflows/tests.yml/badge.svg)](https://github.com/MfN-Berlin/bslquery/actions/workflows/tests.yml)
 
-Python package for querying the biosoundslab database.
+Python package for querying the [biosoundslab](https://github.com/MfN-Berlin/biosoundslab) database.
 
 ## Installation
 ```
