@@ -3,3 +3,5 @@ python-dotenv
 jupyter
 pandas
 openpyxl
+pytest>=8.0
+pytest-cov

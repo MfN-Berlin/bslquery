@@ -35,3 +35,7 @@ Repository = "https://github.com/MfN-Berlin/bslquery"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --cov=bslquery --cov-report=term-missing"

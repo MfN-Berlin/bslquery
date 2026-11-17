@@ -27,6 +27,11 @@ class BioSoundsLabDB:
             logger.info(message)
 
 
+    def _connect(self):
+        """Open a new connection using self.db_config. Single seam patched in unit tests."""
+        return psycopg2.connect(**self.db_config)
+
+
     def test_connection(self):
         """
         Test if a connection to the PostgreSQL database can be established.
@@ -34,7 +39,7 @@ class BioSoundsLabDB:
         returns: True if the connection is successful, False otherwise.
         """
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 self._log("Connection successful!")
                 return True
         except OperationalError as e:
@@ -52,7 +57,7 @@ class BioSoundsLabDB:
         returns: int id of the site, if found
         """
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute("SELECT id FROM sites WHERE prefix LIKE %s;", (f"%{prefix}%",))
                     row = cursor.fetchone()
@@ -74,7 +79,7 @@ class BioSoundsLabDB:
         returns: int id of the label, if found
         """
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute("select id from labels where name like %s;", (f"%{species_name}%",))
                     row = cursor.fetchone()
@@ -96,7 +101,7 @@ class BioSoundsLabDB:
         returns: int id of the label, if found
         """
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute("select id from models where name like %s;", (f"%{model_name}%",))
                     row = cursor.fetchone()
@@ -140,7 +145,7 @@ class BioSoundsLabDB:
         return int days count
         """
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                         select count(distinct date(record_datetime)) from records where
@@ -215,7 +220,7 @@ class BioSoundsLabDB:
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                     with record_ids as (
@@ -272,7 +277,7 @@ class BioSoundsLabDB:
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                     SELECT COUNT(DISTINCT DATE(r.record_datetime)) AS unique_days_count
@@ -316,7 +321,7 @@ class BioSoundsLabDB:
         site_id = self.fetch_site_id_by_prefix(site_prefix)
         model_id = self.fetch_model_id_by_model_name(model_name)
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                     SELECT COUNT(DISTINCT mir.label_id) AS unique_label_count
@@ -357,7 +362,7 @@ class BioSoundsLabDB:
         site_id = self.fetch_site_id_by_prefix(site_prefix)
         model_id = self.fetch_model_id_by_model_name(model_name)
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                             SELECT * FROM (
@@ -416,7 +421,7 @@ class BioSoundsLabDB:
         Returns: list of dict
         """
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                         SELECT
@@ -451,7 +456,7 @@ class BioSoundsLabDB:
         Returns: list of dict
         """
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                         SELECT
@@ -501,7 +506,7 @@ class BioSoundsLabDB:
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                     SELECT DISTINCT ON (threshold_type)
@@ -534,7 +539,7 @@ class BioSoundsLabDB:
         model_id = self.fetch_model_id_by_model_name(model_name)
         print(f"Processing: {site_prefix} ({site_id}), {year}, {species_name} ({label_id}), {model_name} ({model_id})")
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                         WITH ids AS (
@@ -645,7 +650,7 @@ class BioSoundsLabDB:
         model_id = self.fetch_model_id_by_model_name(model_name)
         print(f"Processing: {site_prefix} ({site_id}), {year}, {species_name} ({label_id}), {model_name} ({model_id})")
         try:
-            with psycopg2.connect(**self.db_config) as conn:
+            with self._connect() as conn:
                 with conn.cursor() as cursor:
                     query = """
                         WITH ids AS (
