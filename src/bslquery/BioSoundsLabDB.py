@@ -4,6 +4,21 @@ from datetime import datetime
 import logging
 
 from bslquery.decorators import db_query, rows_as_dicts
+from bslquery.queries import (
+    COUNT_SPECIES_WITH_THRESHOLD,
+    DAYS_WITH_RECORDINGS,
+    FETCH_ACOUSTIC_ACTIVITY_COUNTS,
+    FETCH_COUNT_ACOUSTIC_ACTIVITY_DAYS,
+    FETCH_INFERENCES,
+    FETCH_LABEL_ID_BY_SPECIES_NAME,
+    FETCH_MAX_PRO_RECORD,
+    FETCH_MODEL_ID_BY_MODEL_NAME,
+    FETCH_SITE_ID_BY_PREFIX,
+    FETCH_SPECIES_WITH_THRESHOLD,
+    FETCH_THRESHOLDS,
+    SITES,
+    SITES_YEARS,
+)
 
 # the logger is tied too the module, not the class (Pythonesque way)
 # __name__ is the name of the module
@@ -59,7 +74,7 @@ class BioSoundsLabDB:
         prefix: text a site prefix, e.g. BBNSF_1205H
         returns: int id of the site, if found
         """
-        cursor.execute("SELECT id FROM sites WHERE prefix LIKE %s;", (f"%{prefix}%",))
+        cursor.execute(FETCH_SITE_ID_BY_PREFIX, (f"%{prefix}%",))
         row = cursor.fetchone()
         if not row:
             return None
@@ -74,7 +89,7 @@ class BioSoundsLabDB:
         prefix: text a species name, e.g. Anthus trivialis
         returns: int id of the label, if found
         """
-        cursor.execute("select id from labels where name like %s;", (f"%{species_name}%",))
+        cursor.execute(FETCH_LABEL_ID_BY_SPECIES_NAME, (f"%{species_name}%",))
         row = cursor.fetchone()
         if not row:
             return None
@@ -89,7 +104,7 @@ class BioSoundsLabDB:
         prefix: text a model name, e.g. BirdNET+_v0.3_global11K_prev3
         returns: int id of the label, if found
         """
-        cursor.execute("select id from models where name like %s;", (f"%{model_name}%",))
+        cursor.execute(FETCH_MODEL_ID_BY_MODEL_NAME, (f"%{model_name}%",))
         row = cursor.fetchone()
         if not row:
             return None
@@ -97,11 +112,13 @@ class BioSoundsLabDB:
             return row[0]
 
 
-    def days_between_dates(self, datestr1, datestr2):
+    @staticmethod
+    def days_between_dates(datestr1, datestr2):
         """
         Helper function to count days between dates.
         The start date and the end date are included in the count.
         This method does not query the database. To get the number of dates with a recording, use days_with_recordings instead.
+        Static: callable as BioSoundsLabDB.days_between_dates(...) without an instance.
 
         date1, date2: string in the form YYYY-MM-DD
         return int number of days between dates
@@ -126,15 +143,10 @@ class BioSoundsLabDB:
         site_id: int id in the sites table in the database
         return int days count
         """
-        query = """
-            select count(distinct date(record_datetime)) from records where
-            site_id=%(site_id)s
-            and record_datetime >= %(start_date)s and record_datetime <= %(end_date)s
-        """
         params = {
             "site_id": site_id, "start_date": start_date, "end_date": end_date,
         }
-        cursor.execute(query, params)
+        cursor.execute(DAYS_WITH_RECORDINGS, params)
         row = cursor.fetchone()
         if not row:
             return None
@@ -194,24 +206,13 @@ class BioSoundsLabDB:
         site_id = self.fetch_site_id_by_prefix(site_prefix)
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
-        query = """
-        with record_ids as (
-            select id from records where site_id=%(site_id)s
-            and record_datetime >= %(start_date)s and record_datetime <= %(end_date)s
-        )
-        select count(id) from model_inference_results_max_confidence
-        where
-        confidence >= %(threshold)s and label_id=%(label_id)s
-        and model_id=%(model_id)s
-        and record_id in (select id from record_ids);
-        """
         params = {
             "site_id": site_id,
             "start_date": f"{start_date}T00:00:00+01:00",
             "end_date": f"{end_date}T23:59:59+01:00",
             "threshold": threshold, "label_id": label_id, "model_id": model_id
         }
-        cursor.execute(query, params)
+        cursor.execute(FETCH_ACOUSTIC_ACTIVITY_COUNTS, params)
         row = cursor.fetchone()
         if not row:
             return None
@@ -244,16 +245,6 @@ class BioSoundsLabDB:
         site_id = self.fetch_site_id_by_prefix(site_prefix)
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
-        query = """
-        SELECT COUNT(DISTINCT DATE(r.record_datetime)) AS unique_days_count
-        FROM model_inference_results_pt_record mir
-        JOIN records r ON mir.record_id = r.id
-        WHERE mir.model_id = %(model_id)s
-          AND mir.label_id = %(label_id)s
-          AND r.site_id = %(site_id)s
-          AND mir.confidence >= %(threshold)s
-          AND r.record_datetime >= %(start_date)s and r.record_datetime <= %(end_date)s;
-        """
         params = {
             "site_id": site_id,
             "label_id": label_id,
@@ -262,7 +253,7 @@ class BioSoundsLabDB:
             "end_date": f"{end_date}T23:59:59+01:00",
             "threshold": threshold,
         }
-        cursor.execute(query, params)
+        cursor.execute(FETCH_COUNT_ACOUSTIC_ACTIVITY_DAYS, params)
         row = cursor.fetchone()
         if not row:
             return None
@@ -281,20 +272,12 @@ class BioSoundsLabDB:
         """
         site_id = self.fetch_site_id_by_prefix(site_prefix)
         model_id = self.fetch_model_id_by_model_name(model_name)
-        query = """
-        SELECT COUNT(DISTINCT mir.label_id) AS unique_label_count
-        FROM model_inference_results_view mir
-        JOIN records r ON mir.record_id = r.id
-        WHERE r.site_id =  %(site_id)s
-          AND mir.model_id =  %(model_id)s
-          AND mir.confidence >=  %(threshold)s;
-        """
         params = {
             "site_id": site_id,
             "model_id": model_id,
             "threshold": threshold
         }
-        cursor.execute(query, params)
+        cursor.execute(COUNT_SPECIES_WITH_THRESHOLD, params)
         row = cursor.fetchone()
         if not row:
             return None
@@ -315,37 +298,12 @@ class BioSoundsLabDB:
         """
         site_id = self.fetch_site_id_by_prefix(site_prefix)
         model_id = self.fetch_model_id_by_model_name(model_name)
-        query = """
-        SELECT * FROM (
-            SELECT DISTINCT ON (l.id)
-                s.prefix AS site_prefix,
-                s.name AS site_name,
-                r.record_datetime::date AS date,
-                r.record_datetime::time AS time,
-                r.filename,
-                mir.start_time,
-                mir.end_time,
-                m.name AS model_name,
-                l.name AS species,
-                mir.confidence
-            FROM model_inference_results_view mir
-            JOIN records r ON r.id = mir.record_id
-            JOIN sites  s ON s.id = r.site_id
-            JOIN models m ON m.id = mir.model_id
-            JOIN labels l ON l.id = mir.label_id
-            WHERE r.site_id = %(site_id)s
-              AND mir.model_id = %(model_id)s
-              AND mir.confidence >= %(threshold)s
-            ORDER BY l.id, mir.confidence DESC
-        ) t
-        ORDER BY species;
-        """
         params = {
             "site_id": site_id,
             "model_id": model_id,
             "threshold": threshold
         }
-        cursor.execute(query, params)
+        cursor.execute(FETCH_SPECIES_WITH_THRESHOLD, params)
         return rows_as_dicts(cursor)
 
 
@@ -355,14 +313,7 @@ class BioSoundsLabDB:
         Fetches all sites in the database.
         Returns: list of dict
         """
-        query = """
-            SELECT
-                sites.prefix, sites.name
-            FROM sites
-            ORDER BY
-                sites.name
-        """
-        cursor.execute(query)
+        cursor.execute(SITES)
         return rows_as_dicts(cursor)
 
     @db_query
@@ -371,23 +322,7 @@ class BioSoundsLabDB:
         Fetches all sites and years combinations in the database.
         Returns: list of dict
         """
-        query = """
-            SELECT
-                sites.prefix, sites.name,
-                EXTRACT(YEAR FROM records.record_datetime)::integer AS year,
-                COUNT(*) AS count
-            FROM
-                records
-            JOIN
-                sites ON records.site_id = sites.id
-            GROUP BY
-                sites.prefix, sites.name,
-                EXTRACT(YEAR FROM records.record_datetime)::integer
-            ORDER BY
-                sites.name,
-                year;
-        """
-        cursor.execute(query)
+        cursor.execute(SITES_YEARS)
         return rows_as_dicts(cursor)
 
 
@@ -402,17 +337,7 @@ class BioSoundsLabDB:
         """
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
-        query = """
-        SELECT DISTINCT ON (threshold_type)
-            t.threshold_type,
-            t.threshold
-        FROM thresholds t
-        WHERE t.label_id = %(label_id)s
-          AND t.model_id = %(model_id)s
-          AND t.threshold_type IN ('experimental', 'preliminary', 'final')
-        ORDER BY t.threshold_type, t.set_at DESC;
-        """
-        cursor.execute(query, {"label_id": label_id, "model_id": model_id})
+        cursor.execute(FETCH_THRESHOLDS, {"label_id": label_id, "model_id": model_id})
         return {
             "experimental": None,
             "preliminary":  None,
@@ -429,75 +354,6 @@ class BioSoundsLabDB:
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
         print(f"Processing: {site_prefix} ({site_id}), {year}, {species_name} ({label_id}), {model_name} ({model_id})")
-        query = """
-        WITH ids AS (
-            SELECT id
-            FROM records
-            WHERE site_id = %(site_id)s
-            AND EXTRACT(YEAR FROM record_datetime) = %(year)s
-        ),
-        latest_thresholds AS (
-            SELECT
-                label_id,
-                model_id,
-                threshold_type,
-                threshold,
-                set_at,
-                ROW_NUMBER() OVER (
-                    PARTITION BY label_id, model_id, threshold_type
-                    ORDER BY set_at DESC
-                ) AS rn
-            FROM thresholds
-        )
-        SELECT
-            s.prefix AS site_prefix,
-            s.name AS site_name,
-            r.record_datetime::date AS date,
-            r.record_datetime::time AS time,
-            r.filename,
-            mir.start_time,
-            mir.end_time,
-            m.name AS model_name,
-            l.name AS species,
-            mir.confidence,
-            t_experimental.threshold AS experimental_threshold,
-            t_preliminary.threshold AS preliminary_threshold,
-            t_final.threshold AS final_threshold
-        FROM
-            model_inference_results_view mir
-        JOIN
-            records r ON mir.record_id = r.id
-        JOIN
-            sites s ON r.site_id = s.id
-        JOIN
-            models m ON mir.model_id = m.id
-        JOIN
-            labels l ON mir.label_id = l.id
-        LEFT JOIN
-            latest_thresholds t_experimental ON
-                mir.label_id = t_experimental.label_id AND
-                mir.model_id = t_experimental.model_id AND
-                t_experimental.threshold_type = 'experimental' AND
-                t_experimental.rn = 1
-        LEFT JOIN
-            latest_thresholds t_preliminary ON
-                mir.label_id = t_preliminary.label_id AND
-                mir.model_id = t_preliminary.model_id AND
-                t_preliminary.threshold_type = 'preliminary' AND
-                t_preliminary.rn = 1
-        LEFT JOIN
-            latest_thresholds t_final ON
-                mir.label_id = t_final.label_id AND
-                mir.model_id = t_final.model_id AND
-                t_final.threshold_type = 'final' AND
-                t_final.rn = 1
-        WHERE
-            mir.record_id IN (SELECT id FROM ids)
-            AND mir.label_id = %(label_id)s
-            AND mir.model_id = %(model_id)s
-            AND mir.confidence >= %(min_confidence)s;
-        """
-
         params = {
             "site_id": site_id,
             "year": year,
@@ -505,7 +361,7 @@ class BioSoundsLabDB:
             "model_id": model_id,
             "min_confidence": min_confidence
         }
-        cursor.execute(query, params)
+        cursor.execute(FETCH_INFERENCES, params)
         results = rows_as_dicts(cursor)
         if results is None:
             print("Found no results")
@@ -524,75 +380,6 @@ class BioSoundsLabDB:
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
         print(f"Processing: {site_prefix} ({site_id}), {year}, {species_name} ({label_id}), {model_name} ({model_id})")
-        query = """
-        WITH ids AS (
-            SELECT id
-            FROM records
-            WHERE site_id = %(site_id)s
-            AND EXTRACT(YEAR FROM record_datetime) = %(year)s
-        ),
-        latest_thresholds AS (
-            SELECT
-                label_id,
-                model_id,
-                threshold_type,
-                threshold,
-                set_at,
-                ROW_NUMBER() OVER (
-                    PARTITION BY label_id, model_id, threshold_type
-                    ORDER BY set_at DESC
-                ) AS rn
-            FROM thresholds
-        )
-        SELECT
-            s.prefix AS site_prefix,
-            s.name AS site_name,
-            r.record_datetime::date AS date,
-            r.record_datetime::time AS time,
-            r.filename,
-            maxs.start_time,
-            maxs.end_time,
-            m.name AS model_name,
-            l.name AS species,
-            maxs.confidence,
-            t_experimental.threshold AS experimental_threshold,
-            t_preliminary.threshold AS preliminary_threshold,
-            t_final.threshold AS final_threshold
-        FROM
-            model_inference_results_max_confidence maxs
-        JOIN
-            records r ON maxs.record_id = r.id
-        JOIN
-            sites s ON r.site_id = s.id
-        JOIN
-            models m ON maxs.model_id = m.id
-        JOIN
-            labels l ON maxs.label_id = l.id
-        LEFT JOIN
-            latest_thresholds t_experimental ON
-                maxs.label_id = t_experimental.label_id AND
-                maxs.model_id = t_experimental.model_id AND
-                t_experimental.threshold_type = 'experimental' AND
-                t_experimental.rn = 1
-        LEFT JOIN
-            latest_thresholds t_preliminary ON
-                maxs.label_id = t_preliminary.label_id AND
-                maxs.model_id = t_preliminary.model_id AND
-                t_preliminary.threshold_type = 'preliminary' AND
-                t_preliminary.rn = 1
-        LEFT JOIN
-            latest_thresholds t_final ON
-                maxs.label_id = t_final.label_id AND
-                maxs.model_id = t_final.model_id AND
-                t_final.threshold_type = 'final' AND
-                t_final.rn = 1
-        WHERE
-            maxs.record_id IN (SELECT id FROM ids)
-            AND maxs.label_id = %(label_id)s
-            AND maxs.model_id = %(model_id)s
-            AND maxs.confidence >= %(min_confidence)s;
-        """
-
         params = {
             "site_id": site_id,
             "year": year,
@@ -600,7 +387,7 @@ class BioSoundsLabDB:
             "model_id": model_id,
             "min_confidence": min_confidence
         }
-        cursor.execute(query, params)
+        cursor.execute(FETCH_MAX_PRO_RECORD, params)
         results = rows_as_dicts(cursor)
         if results is None:
             print("Found no results")
