@@ -1,4 +1,3 @@
-from psycopg2 import OperationalError, DatabaseError
 from datetime import datetime
 
 from bslquery.BioSoundsLabBase import BioSoundsLabBase
@@ -22,7 +21,7 @@ from bslquery.queries import (
 class BioSoundsLabDB(BioSoundsLabBase):
     """
     A class to query the BioSoundsLab database.
-    Inherits __init__, _log and _connect from BioSoundsLabBase.
+    Inherits __init__, _log, _connect and test_connection from BioSoundsLabBase.
     """
 
     @staticmethod
@@ -40,24 +39,6 @@ class BioSoundsLabDB(BioSoundsLabBase):
             return None                      # tests assert empty result -> None
         columns = [d[0] for d in cursor.description]
         return [dict(zip(columns, row)) for row in rows]
-
-
-    def test_connection(self):
-        """
-        Test if a connection to the PostgreSQL database can be established.
-        db_config (dict): Database connection parameters (host, port, user, password, database).
-        returns: True if the connection is successful, False otherwise.
-        """
-        try:
-            with self._connect() as conn:
-                self._log("Connection successful!")
-                return True
-        except OperationalError as e:
-            self._log(f"Connection failed: {e}")
-            return False
-        except DatabaseError as e:
-            self._log(f"Database error: {e}")
-            return False
 
 
     @db_query
