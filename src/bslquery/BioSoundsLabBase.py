@@ -2,6 +2,8 @@ import logging
 
 import psycopg2
 from psycopg2 import OperationalError, DatabaseError
+from bslquery import queries
+from bslquery.decorators import db_query
 
 
 class BioSoundsLabBase:
@@ -57,3 +59,51 @@ class BioSoundsLabBase:
         except DatabaseError as e:
             self._log(f"Database error: {e}")
             return False
+
+
+    @staticmethod
+    def _fetchone_scalar(cursor):
+        """fetchone() and return the first column, or None if there is no row."""
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+
+    @staticmethod
+    def _rows_as_dicts(cursor):
+        """fetchall() as a list of dicts keyed by column name, or None if no rows."""
+        rows = cursor.fetchall()
+        if not rows:
+            return None                      # tests assert empty result -> None
+        columns = [d[0] for d in cursor.description]
+        return [dict(zip(columns, row)) for row in rows]
+
+
+    @db_query
+    def sites_years(self, cursor):
+        """
+        Fetches all sites and years combinations in the database.
+        Returns: list of dict
+        """
+        cursor.execute(queries.SITES_YEARS)
+        return self._rows_as_dicts(cursor)
+
+    @db_query
+    def fetch_label_id_by_species_name(self, cursor, species_name):
+        """
+        Get from the database the labels corresponding to the species
+        prefix: text a species name, e.g. Anthus trivialis
+        returns: int id of the label, if found
+        """
+        cursor.execute(queries.FETCH_LABEL_ID_BY_SPECIES_NAME, (f"%{species_name}%",))
+        return self._fetchone_scalar(cursor)
+
+
+    @db_query
+    def fetch_model_id_by_model_name(self, cursor, model_name):
+        """
+        Get from the database the model corresponding to the name
+        prefix: text a model name, e.g. BirdNET+_v0.3_global11K_prev3
+        returns: int id of the label, if found
+        """
+        cursor.execute(queries.FETCH_MODEL_ID_BY_MODEL_NAME, (f"%{model_name}%",))
+        return self._fetchone_scalar(cursor)

@@ -13,9 +13,8 @@ authors = [
     { name = "Alvaro Ortiz Troncoso", email = "a.ortiztroncoso@mfn.berlin" },
 ]
 dependencies = [
-    # whatever you need to connect/query, e.g.:
-    # "pandas>=2.0",
-    # "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+    "jsonschema>=4.0",
 ]
 
 [project.optional-dependencies]

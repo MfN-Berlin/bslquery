@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/dwc-occurrence-pam.schema.json",
+  "title": "Darwin Core flat occurrence record (passive acoustic monitoring)",
+  "description": "JSON Schema for flat DwC occurrence records, e.g. BirdNet-style acoustic detections. All DwC terms are strings per the Darwin Core Text Guide; detection metadata (start/end time, confidence, thresholds) is nested in dynamicProperties as a JSON string.",
+  "type": "array",
+  "items": { "$ref": "#/definitions/occurrence" },
+  "definitions": {
+    "dynamicProperties": {
+      "type": "string",
+      "description": "Must itself be valid JSON. Recommended keys for acoustic detections: start_time, end_time, confidence, experimental_threshold, preliminary_threshold, final_threshold.",
+      "$comment": "JSON-level nesting cannot be enforced by JSON Schema on a string; parse it in a follow-up step (see scripts/validate.js or validate.py)."
+    },
+    "occurrence": {
+      "type": "object",
+      "required": ["occurrenceID", "eventDate", "scientificName", "occurrenceStatus", "basisOfRecord"],
+      "additionalProperties": false,
+      "properties": {
+        "occurrenceID": {
+          "type": "string",
+          "description": "dwc:occurrenceID - unique identifier of the record, e.g. file + time offset."
+        },
+        "eventID": {
+          "type": "string",
+          "description": "dwc:eventID - identifier of the sampling event, e.g. the audio file."
+        },
+        "eventDate": {
+          "type": "string",
+          "description": "dwc:eventDate - ISO 8601 date or datetime, YYYY-MM-DD (optionally with time).",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}([T ]\\d{2}:\\d{2}(:\\d{2}(.\\d+)?)?(Z|[+-]\\d{2}:?\\d{2})?)?$"
+        },
+        "eventTime": {
+          "type": "string",
+          "description": "dwc:eventTime - time of day, HH:MM:SS(.sss)? with optional timezone.",
+          "pattern": "^\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:?\\d{2})?$"
+        },
+        "scientificName": {
+          "type": "string",
+          "description": "dwc:scientificName - full scientific name, ideally with authorship appended."
+        },
+        "taxonRank": {
+          "type": "string",
+          "description": "dwc:taxonRank - taxonomic rank of the scientificName.",
+          "enum": ["subspecies", "variety", "species", "subgenus", "genus", "family", "superfamily", "order", "class", "phylum", "kingdom"]
+        },
+        "occurrenceStatus": {
+          "type": "string",
+          "description": "dwc:occurrenceStatus - controlled vocabulary per DwC.",
+          "enum": ["present", "absent"]
+        },
+        "basisOfRecord": {
+          "type": "string",
+          "description": "dwc:basisOfRecord - controlled vocabulary of Darwin Core classes.",
+          "enum": ["PreservedSpecimen", "FossilSpecimen", "LivingSpecimen", "MaterialSample", "Event", "HumanObservation", "MachineObservation", "Taxon", "Occurrence", "Literature", "Unknown"]
+        },
+        "recordedBy": {
+          "type": "string",
+          "description": "dwc:recordedBy - names of people or software that recorded the occurrence, e.g. the detection model name/version."
+        },
+        "locationID": {
+          "type": "string",
+          "description": "dwc:locationID - identifier of the sampling location."
+        },
+        "locality": {
+          "type": "string",
+          "description": "dwc:locality - human-readable place description."
+        },
+        "decimalLatitude": {
+          "type": "string",
+          "description": "dwc:decimalLatitude - decimal degrees, -90 to 90.",
+          "pattern": "^-?(90(\\.0+)?|([0-8]?\\d(\\.\\d+)?))$"
+        },
+        "decimalLongitude": {
+          "type": "string",
+          "description": "dwc:decimalLongitude - decimal degrees, -180 to 180.",
+          "pattern": "^-?(180(\\.0+)?|(1[0-7]\\d(\\.\\d+)?)|([0-9]{1,2}(\\.\\d+)?))$"
+        },
+        "coordinateUncertaintyInMeters": {
+          "type": "string",
+          "description": "dwc:coordinateUncertaintyInMeters - positive number.",
+          "pattern": "^\\d+(\\.\\d+)?$"
+        },
+        "geodeticDatum": {
+          "type": "string",
+          "description": "dwc:geodeticDatum - e.g. EPSG:4326 / WGS84."
+        },
+        "dynamicProperties": { "$ref": "#/definitions/dynamicProperties" }
+      }
+    }
+  }
+}

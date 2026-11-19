@@ -1,45 +1,15 @@
 from datetime import datetime
 
 from bslquery.BioSoundsLabBase import BioSoundsLabBase
+from bslquery import queries
 from bslquery.decorators import db_query
-from bslquery.queries import (
-    COUNT_SPECIES_WITH_THRESHOLD,
-    DAYS_WITH_RECORDINGS,
-    FETCH_ACOUSTIC_ACTIVITY_COUNTS,
-    FETCH_COUNT_ACOUSTIC_ACTIVITY_DAYS,
-    FETCH_INFERENCES,
-    FETCH_LABEL_ID_BY_SPECIES_NAME,
-    FETCH_MAX_PRO_RECORD,
-    FETCH_MODEL_ID_BY_MODEL_NAME,
-    FETCH_SITE_ID_BY_PREFIX,
-    FETCH_SPECIES_WITH_THRESHOLD,
-    FETCH_THRESHOLDS,
-    SITES,
-    SITES_YEARS,
-)
 
 class BioSoundsLabDB(BioSoundsLabBase):
     """
     A class to query the BioSoundsLab database.
-    Inherits __init__, _log, _connect and test_connection from BioSoundsLabBase.
+    Inherits __init__, _log, _connect, test_connection and _fetchone_scalar
+    from BioSoundsLabBase.
     """
-
-    @staticmethod
-    def _fetchone_scalar(cursor):
-        """fetchone() and return the first column, or None if there is no row."""
-        row = cursor.fetchone()
-        return row[0] if row else None
-
-
-    @staticmethod
-    def _rows_as_dicts(cursor):
-        """fetchall() as a list of dicts keyed by column name, or None if no rows."""
-        rows = cursor.fetchall()
-        if not rows:
-            return None                      # tests assert empty result -> None
-        columns = [d[0] for d in cursor.description]
-        return [dict(zip(columns, row)) for row in rows]
-
 
     @db_query
     def fetch_site_id_by_prefix(self, cursor, prefix):
@@ -48,31 +18,8 @@ class BioSoundsLabDB(BioSoundsLabBase):
         prefix: text a site prefix, e.g. BBNSF_1205H
         returns: int id of the site, if found
         """
-        cursor.execute(FETCH_SITE_ID_BY_PREFIX, (f"%{prefix}%",))
+        cursor.execute(queries.FETCH_SITE_ID_BY_PREFIX, (f"%{prefix}%",))
         return self._fetchone_scalar(cursor)
-
-
-    @db_query
-    def fetch_label_id_by_species_name(self, cursor, species_name):
-        """
-        Get from the database the labels corresponding to the species
-        prefix: text a species name, e.g. Anthus trivialis
-        returns: int id of the label, if found
-        """
-        cursor.execute(FETCH_LABEL_ID_BY_SPECIES_NAME, (f"%{species_name}%",))
-        return self._fetchone_scalar(cursor)
-
-
-    @db_query
-    def fetch_model_id_by_model_name(self, cursor, model_name):
-        """
-        Get from the database the model corresponding to the name
-        prefix: text a model name, e.g. BirdNET+_v0.3_global11K_prev3
-        returns: int id of the label, if found
-        """
-        cursor.execute(FETCH_MODEL_ID_BY_MODEL_NAME, (f"%{model_name}%",))
-        return self._fetchone_scalar(cursor)
-
 
     @staticmethod
     def days_between_dates(datestr1, datestr2):
@@ -108,7 +55,7 @@ class BioSoundsLabDB(BioSoundsLabBase):
         params = {
             "site_id": site_id, "start_date": start_date, "end_date": end_date,
         }
-        cursor.execute(DAYS_WITH_RECORDINGS, params)
+        cursor.execute(queries.DAYS_WITH_RECORDINGS, params)
         return self._fetchone_scalar(cursor)
 
 
@@ -170,7 +117,7 @@ class BioSoundsLabDB(BioSoundsLabBase):
             "end_date": f"{end_date}T23:59:59+01:00",
             "threshold": threshold, "label_id": label_id, "model_id": model_id
         }
-        cursor.execute(FETCH_ACOUSTIC_ACTIVITY_COUNTS, params)
+        cursor.execute(queries.FETCH_ACOUSTIC_ACTIVITY_COUNTS, params)
         return self._fetchone_scalar(cursor)
 
 
@@ -207,7 +154,7 @@ class BioSoundsLabDB(BioSoundsLabBase):
             "end_date": f"{end_date}T23:59:59+01:00",
             "threshold": threshold,
         }
-        cursor.execute(FETCH_COUNT_ACOUSTIC_ACTIVITY_DAYS, params)
+        cursor.execute(queries.FETCH_COUNT_ACOUSTIC_ACTIVITY_DAYS, params)
         return self._fetchone_scalar(cursor)
 
     @db_query
@@ -227,7 +174,7 @@ class BioSoundsLabDB(BioSoundsLabBase):
             "model_id": model_id,
             "threshold": threshold
         }
-        cursor.execute(COUNT_SPECIES_WITH_THRESHOLD, params)
+        cursor.execute(queries.COUNT_SPECIES_WITH_THRESHOLD, params)
         return self._fetchone_scalar(cursor)
 
 
@@ -249,7 +196,7 @@ class BioSoundsLabDB(BioSoundsLabBase):
             "model_id": model_id,
             "threshold": threshold
         }
-        cursor.execute(FETCH_SPECIES_WITH_THRESHOLD, params)
+        cursor.execute(queries.FETCH_SPECIES_WITH_THRESHOLD, params)
         return self._rows_as_dicts(cursor)
 
 
@@ -259,18 +206,8 @@ class BioSoundsLabDB(BioSoundsLabBase):
         Fetches all sites in the database.
         Returns: list of dict
         """
-        cursor.execute(SITES)
+        cursor.execute(queries.SITES)
         return self._rows_as_dicts(cursor)
-
-    @db_query
-    def sites_years(self, cursor):
-        """
-        Fetches all sites and years combinations in the database.
-        Returns: list of dict
-        """
-        cursor.execute(SITES_YEARS)
-        return self._rows_as_dicts(cursor)
-
 
     @db_query
     def fetch_thresholds(self, cursor, species_name, model_name):
@@ -283,7 +220,7 @@ class BioSoundsLabDB(BioSoundsLabBase):
         """
         label_id = self.fetch_label_id_by_species_name(species_name)
         model_id = self.fetch_model_id_by_model_name(model_name)
-        cursor.execute(FETCH_THRESHOLDS, {"label_id": label_id, "model_id": model_id})
+        cursor.execute(queries.FETCH_THRESHOLDS, {"label_id": label_id, "model_id": model_id})
         return {
             "experimental": None,
             "preliminary":  None,
@@ -307,7 +244,7 @@ class BioSoundsLabDB(BioSoundsLabBase):
             "model_id": model_id,
             "min_confidence": min_confidence
         }
-        cursor.execute(FETCH_INFERENCES, params)
+        cursor.execute(queries.FETCH_INFERENCES, params)
         results = self._rows_as_dicts(cursor)
         if results is None:
             print("Found no results")
@@ -333,7 +270,7 @@ class BioSoundsLabDB(BioSoundsLabBase):
             "model_id": model_id,
             "min_confidence": min_confidence
         }
-        cursor.execute(FETCH_MAX_PRO_RECORD, params)
+        cursor.execute(queries.FETCH_MAX_PRO_RECORD, params)
         results = self._rows_as_dicts(cursor)
         if results is None:
             print("Found no results")

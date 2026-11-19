@@ -4,6 +4,8 @@
 
 Python package for querying the [biosoundslab](https://github.com/MfN-Berlin/biosoundslab) database.
 
+Query results are returned as Darwin Core JSON or as Excel files (depending on the query, see examples).
+
 ## Installation
 ```
 conda create -n biosoundslab python=3.12
