@@ -1,8 +1,7 @@
-import psycopg2
 from psycopg2 import OperationalError, DatabaseError
 from datetime import datetime
-import logging
 
+from bslquery.BioSoundsLabBase import BioSoundsLabBase
 from bslquery.decorators import db_query
 from bslquery.queries import (
     COUNT_SPECIES_WITH_THRESHOLD,
@@ -20,34 +19,11 @@ from bslquery.queries import (
     SITES_YEARS,
 )
 
-# the logger is tied too the module, not the class (Pythonesque way)
-# __name__ is the name of the module
-logger = logging.getLogger(__name__)
-
-class BioSoundsLabDB:
+class BioSoundsLabDB(BioSoundsLabBase):
     """
     A class to query the BioSoundsLab database.
-    Note: might want to use a connection pool instead
+    Inherits __init__, _log and _connect from BioSoundsLabBase.
     """
-    def __init__(self, db_config, verbose=False):
-        self.db_config = db_config
-        self.verbose = verbose  # If True, print messages to stdout (for Jupyter)
-
-
-    def _log(self, message, level=logging.INFO):
-        """Log a message, and print if verbose is True."""
-        if self.verbose:
-            print(message)
-        if level == logging.ERROR:
-            logger.error(message)
-        else:
-            logger.info(message)
-
-
-    def _connect(self):
-        """Open a new connection using self.db_config. Single seam patched in unit tests."""
-        return psycopg2.connect(**self.db_config)
-
 
     @staticmethod
     def _fetchone_scalar(cursor):
